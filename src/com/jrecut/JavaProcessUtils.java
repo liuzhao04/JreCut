@@ -2,15 +2,9 @@ package com.jrecut;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import com.sun.jna.Library;
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
 
 /**
  * Java进程工具类(针对windows系统中运行的java进程)
@@ -28,7 +22,7 @@ public class JavaProcessUtils {
 		List<Pair<String, Long>> javaProcessList = listJavaProcessPid();
 		Pair<String, Long> tmp = null;
 		for (Pair<String, Long> p : javaProcessList) {
-			if (p.getValue().equals(getPid())) {
+			if (p.getValue().equals(EasyProcess.getPid())) {
 				tmp = p;
 				break;
 			}
@@ -51,7 +45,8 @@ public class JavaProcessUtils {
 			final List<Pair<String, Long>> list = new ArrayList<Pair<String, Long>>();
 			final EasyProcess ep = new EasyProcess("tasklist", "/v");
 			ep.run(new EasyProcess.IStreamParser() {
-
+				private long pid;
+				
 				@Override
 				public void handleOut(BufferedReader out) {
 					try {
@@ -74,11 +69,21 @@ public class JavaProcessUtils {
 					try {
 						String ostr;
 						while ((ostr = err.readLine()) != null) {
-							System.err.println(ostr);
+							System.err.println(pid+" --> "+ostr);
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
+				}
+
+				@Override
+				public void init(long pid) {
+					this.pid = pid;
+				}
+
+				@Override
+				public void finish() {
+					
 				}
 			});
 
@@ -109,24 +114,12 @@ public class JavaProcessUtils {
 	public static List<String> listMoudles(Long pid) {
 		final List<String> mlist = new ArrayList<String>();
 		new EasyProcess("jmap", String.valueOf(pid)).run(new EasyProcess.IStreamParser() {
-
+			private long pid;
+			
 			@Override
 			public void handleOut(BufferedReader out) {
 				String tmp = null;
 				try {
-					int count = 0;
-					while (!out.ready()) {
-						if (count == 10) {
-							return;
-						}
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-						count++;
-					}
-
 					while ((tmp = out.readLine()) != null) {
 						if (tmp.matches("^[0-9a-fA-FxX]+\\s+[\\d]+.+")) {
 							String[] tmps = tmp.split("\\t+");
@@ -142,89 +135,24 @@ public class JavaProcessUtils {
 			public void handleErr(BufferedReader err) {
 				String tmp = null;
 				try {
-					int count = 0;
-					while (!err.ready()) {
-						if (count == 10) {
-							return;
-						}
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-						count++;
-					}
-
 					while ((tmp = err.readLine()) != null) {
-						System.err.println(tmp);
+						System.err.println(pid+" --> "+tmp);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
 
+			@Override
+			public void init(long pid) {
+				this.pid = pid;
+			}
+
+			@Override
+			public void finish() {
+			}
+
 		});
 		return mlist;
-	}
-
-	/**
-	 * 获取当前进程的PID
-	 * 
-	 * @return
-	 */
-	public static long getPid() {
-		String name = ManagementFactory.getRuntimeMXBean().getName();
-		return Long.parseLong(name.split("@")[0]);
-	}
-
-	/**
-	 * 获取进程PID
-	 * 
-	 * @param process
-	 * @return
-	 */
-	public static long getPid(Process process) {
-		long pid = -1;
-		Field field = null;
-		if (Platform.isWindows()) {
-			try {
-				field = process.getClass().getDeclaredField("handle");
-				field.setAccessible(true);
-				pid = Kernel32.INSTANCE.GetProcessId((Long) field.get(process));
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-		} else if (Platform.isLinux() || Platform.isAIX()) {
-			try {
-				Class<?> clazz = Class.forName("java.lang.UNIXProcess");
-				field = clazz.getDeclaredField("pid");
-				field.setAccessible(true);
-				pid = (Integer) field.get(process);
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
-		}
-		return pid;
-	}
-
-	/**
-	 * 获取PID的工具接口
-	 * 
-	 * @author liuz@aotian.com
-	 * @date 2017年9月27日 下午6:38:29
-	 */
-	public interface Kernel32 extends Library {
-		public static Kernel32 INSTANCE = (Kernel32) Native.loadLibrary("kernel32", Kernel32.class);
-
-		public long GetProcessId(Long hProcess);
-	}
-
-	public static void main(String[] args) {
-		List<Pair<String, Long>> javaProcessList = listJavaProcessPidWithoutSelf();
-		System.out.println(javaProcessList);
-		for (Pair<String, Long> p : javaProcessList) {
-			List<String> modoules = listMoudles(p.getValue());
-			System.out.println(modoules);
-		}
 	}
 }

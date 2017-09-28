@@ -3,7 +3,7 @@ public class Main {
 	public static void main(String[] args) {
 		System.out.println("Hello world");
 		try {
-			Thread.sleep(100000);
+			Thread.sleep(5000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
