@@ -11,7 +11,7 @@ public class Main {
 		}
 
 		try {
-			JavaClassExecutor jce = new JavaClassExecutor("bin");
+			JavaClassExecutor jce = new JavaClassExecutor("F:\\cutjre\\mycute\\cut");
 			jce.exec(args[0], args.length > 1 ? args[1] : null, true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

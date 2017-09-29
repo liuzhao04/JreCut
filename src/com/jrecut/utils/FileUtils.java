@@ -2,6 +2,7 @@ package com.jrecut.utils;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -90,9 +91,9 @@ public class FileUtils {
 		if (dstFile == null) {
 			throw new IOException("目的文件为空");
 		}
-		if (dstFile.exists()) {
+		/*if (dstFile.exists()) { // 覆盖已有的文件
 			throw new IOException("目的文件已存在：" + dstFile.getAbsolutePath());
-		}
+		}*/
 
 		File p = dstFile.getParentFile();
 		if (!p.exists()) {
@@ -125,5 +126,52 @@ public class FileUtils {
 		}
 		in.close();
 		out.close();
+	}
+
+	/**
+	 * 目录拷贝
+	 * 
+	 * @param orgDir 源目录 拷贝目录下面的文件
+	 * @param dstDir 目标目录
+	 * @param fileFilter 过滤指定的文件
+	 * @throws IOException
+	 */
+	public static void copyDirTo(File orgDir, File dstDir, FileFilter fileFilter) throws IOException {
+		File[] files = orgDir.listFiles(fileFilter);
+		if (files == null) {
+			return;
+		}
+
+		for (File file : files) {
+			File dst = new File(dstDir.getAbsolutePath() + File.separator + file.getName());
+			if (file.isDirectory()) {
+				copyDirTo(file, dst, fileFilter);
+			} else {
+				copyTo(file, dst);
+			}
+		}
+	}
+
+	/**
+	 * 目录拷贝
+	 * 
+	 * @param orgDir
+	 * @param dstDir
+	 * @throws IOException
+	 */
+	public static void copyDirTo(File orgDir, File dstDir) throws IOException {
+		File[] files = orgDir.listFiles();
+		if (files == null) {
+			return;
+		}
+
+		for (File file : files) {
+			File dst = new File(dstDir.getAbsolutePath() + File.separator + file.getName());
+			if (file.isDirectory()) {
+				copyDirTo(file, dst);
+			} else {
+				copyTo(file, dst);
+			}
+		}
 	}
 }

@@ -21,8 +21,6 @@ import com.sun.jna.Platform;
 public class EasyProcess {
 	private ProcessBuilder pb = null;
 
-	private long pid = -1;
-
 	public EasyProcess(String... cmds) {
 		pb = new ProcessBuilder(cmds);
 	}
@@ -36,10 +34,9 @@ public class EasyProcess {
 		Process p = null;
 		try {
 			p = pb.start();
-			pid = getPid(p);
+			iStreamParser.init(getPid(p));
 			final BufferedReader out = new BufferedReader(
 					new InputStreamReader(new BufferedInputStream(p.getInputStream())));
-			iStreamParser.init(pid);
 			Thread oThread = new Thread(new Runnable() {
 
 				@Override
@@ -72,16 +69,23 @@ public class EasyProcess {
 				}
 			});
 			eThread.start();
+
+			// 循环等待线程（进程结束）
+			while (oThread.isAlive() || eThread.isAlive()) {
+				long tpid = -1;
+				if ((tpid = getPid(p)) != -1L) {
+					iStreamParser.isProcess(tpid);
+					Thread.sleep(100);
+				}
+			}
+
 			iStreamParser.finish();
-			oThread.join();
-			eThread.join();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			if (p != null) {
 				p.destroy();
 			}
-			pid = -1;
 		}
 	}
 
@@ -91,16 +95,25 @@ public class EasyProcess {
 	 * @author liuz@aotian.com
 	 * @date 2017年9月27日 下午2:52:18
 	 */
-	public interface IStreamParser {
+	public static interface IStreamParser {
 		
 		/**
-		 * 提供当前进程的PID
+		 * 获取pid
 		 * @param pid
 		 */
 		public void init(long pid);
-		
+
+		/**
+		 * 进程正在运行
+		 * 
+		 * @param pid
+		 */
+		public void isProcess(long pid);
+
 		/**
 		 * 解析结束
+		 * 
+		 * @return 返回为true是，等待3秒在结束进程
 		 */
 		public void finish();
 
@@ -119,36 +132,81 @@ public class EasyProcess {
 		public void handleErr(BufferedReader err);
 
 	}
-	
+
+	/**
+	 * 流处理接口适配器
+	 * 
+	 * @author liuz@aotian.com
+	 * @date 2017年9月29日 下午1:49:22
+	 */
+	public static class StreamParserAdpter implements IStreamParser {
+		protected long pid = -1;
+
+		@Override
+		public void isProcess(long pid) {
+			this.pid = pid;
+		}
+
+		@Override
+		public void finish() { // 进程完成
+		}
+
+		@Override
+		public void handleOut(BufferedReader out) {
+			EasyProcess.handleOutStream(out, pid, false);
+		}
+
+		@Override
+		public void handleErr(BufferedReader err) {
+			EasyProcess.handleOutStream(err, pid, true);
+		}
+
+		@Override
+		public void init(long pid) {
+			this.pid = pid;
+		}
+
+	}
+
 	/**
 	 * 打印异常信息
+	 * 
 	 * @param err
 	 * @param pid
 	 */
-	public static void handlErr(BufferedReader err,long pid){
+	public static void handleOutStream(BufferedReader err, long pid, boolean isErr) {
 		String tmp = null;
 		try {
-			int count = 0;
-			while (!err.ready()) {
-				if (count == 10) {
-					return;
-				}
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				count++;
-			}
-
 			while ((tmp = err.readLine()) != null) {
-				System.err.println(pid+" --> "+tmp);
+				if (isErr) {
+					System.err.println("process " + pid + " --> " + tmp);
+				} else {
+					System.out.println("process " + pid + " --> " + tmp);
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
+	public static String handlerOutStrem(BufferedReader is){
+		String tmp = null;
+		StringBuilder sb = new StringBuilder();
+		try {
+			int i = 0;
+			while ((tmp = is.readLine()) != null) {
+				if(i++ > 0){
+					sb.append("\r\n");
+				}
+				sb.append(tmp);
+			}
+			return sb.toString();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return e.getMessage();
+		}
+	}
+
 	/**
 	 * 获取当前进程的PID
 	 * 

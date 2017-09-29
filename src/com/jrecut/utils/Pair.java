@@ -1,4 +1,4 @@
-package com.jrecut;
+package com.jrecut.utils;
 
 /**
  * ¼üÖµ¶ÔÀà

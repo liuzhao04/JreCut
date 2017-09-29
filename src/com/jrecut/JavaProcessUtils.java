@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.jrecut.utils.Pair;
+
 /**
  * Java进程工具类(针对windows系统中运行的java进程)
  * 
@@ -44,8 +46,7 @@ public class JavaProcessUtils {
 		try {
 			final List<Pair<String, Long>> list = new ArrayList<Pair<String, Long>>();
 			final EasyProcess ep = new EasyProcess("tasklist", "/v");
-			ep.run(new EasyProcess.IStreamParser() {
-				private long pid;
+			ep.run(new EasyProcess.StreamParserAdpter() {
 				
 				@Override
 				public void handleOut(BufferedReader out) {
@@ -62,28 +63,6 @@ public class JavaProcessUtils {
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-				}
-
-				@Override
-				public void handleErr(BufferedReader err) {
-					try {
-						String ostr;
-						while ((ostr = err.readLine()) != null) {
-							System.err.println(pid+" --> "+ostr);
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-
-				@Override
-				public void init(long pid) {
-					this.pid = pid;
-				}
-
-				@Override
-				public void finish() {
-					
 				}
 			});
 
@@ -113,9 +92,8 @@ public class JavaProcessUtils {
 	 */
 	public static List<String> listMoudles(Long pid) {
 		final List<String> mlist = new ArrayList<String>();
-		new EasyProcess("jmap", String.valueOf(pid)).run(new EasyProcess.IStreamParser() {
-			private long pid;
-			
+		System.out.println("jmap "+pid+" ...");
+		new EasyProcess("jmap", String.valueOf(pid)).run(new EasyProcess.StreamParserAdpter() {
 			@Override
 			public void handleOut(BufferedReader out) {
 				String tmp = null;
@@ -130,28 +108,6 @@ public class JavaProcessUtils {
 					e.printStackTrace();
 				}
 			}
-
-			@Override
-			public void handleErr(BufferedReader err) {
-				String tmp = null;
-				try {
-					while ((tmp = err.readLine()) != null) {
-						System.err.println(pid+" --> "+tmp);
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-
-			@Override
-			public void init(long pid) {
-				this.pid = pid;
-			}
-
-			@Override
-			public void finish() {
-			}
-
 		});
 		return mlist;
 	}
