@@ -125,7 +125,13 @@ public class JavaClassExecutor {
 		final List<String> modules = new ArrayList<String>();
 
 		// 0。 依赖查找
-		resourceSearch(p, clss, jarPathMap, modules);
+		try {
+			resourceSearch(p, clss, jarPathMap, modules);
+		} catch (Exception e) {
+			System.err.println("依赖查找发生异常,JRE精简任务终止");
+			e.printStackTrace();
+			return;
+		}
 
 		// 1. 拷贝modules
 		copyModules(modules);
@@ -376,7 +382,13 @@ public class JavaClassExecutor {
 			if (d.isDirectory()) {
 				final String jarName = d.getAbsolutePath() + ".jar";
 				String[] cmds = new String[] { "jar", "cvf", jarName, "*" };
-				new EasyProcess(cmds).dir(d.getAbsolutePath()).run(new EasyProcess.StreamParserAdpter());
+				try {
+					new EasyProcess(cmds).dir(d.getAbsolutePath()).run(new EasyProcess.StreamParserAdpter());
+				} catch (Exception e1) {
+					System.err.println("打包失败：" + jarName);
+					e1.printStackTrace();
+					continue;
+				}
 				File jarFile = new File(jarName);
 				String dstPath = root.getAbsolutePath() + File.separator + lib + File.separator + jarFile.getName();
 				try {
@@ -673,9 +685,10 @@ public class JavaClassExecutor {
 	 * @param clss
 	 * @param jarPathMap
 	 * @param modules
+	 * @throws Exception 
 	 */
 	private void resourceSearch(EasyProcess p, final Map<String, List<String>> clss,
-			final Map<String, String> jarPathMap, final List<String> modules) {
+			final Map<String, String> jarPathMap, final List<String> modules) throws Exception {
 		p.dir(this.pwd).run(new EasyProcess.StreamParserAdpter() {
 			@Override
 			public void handleOut(BufferedReader out) {
@@ -741,11 +754,17 @@ public class JavaClassExecutor {
 				isProcessCount++;
 
 				System.out.println("searching modules [" + isProcessCount + "] ...");
-				List<String> list = JavaProcessUtils.listMoudles(pid);
-				for (String m : list) {
-					if (!modules.contains(m)) {
-						modules.add(m);
+				List<String> list;
+				try {
+					list = JavaProcessUtils.listMoudles(pid);
+					for (String m : list) {
+						if (!modules.contains(m)) {
+							modules.add(m);
+						}
 					}
+				} catch (Exception e) {
+					System.err.println("模块依赖查找进程异常");
+					e.printStackTrace();
 				}
 				System.out.println("moudules size : " + modules.size());
 			}

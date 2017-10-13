@@ -30,7 +30,7 @@ public class EasyProcess {
 		return this;
 	}
 
-	public void run(final IStreamParser iStreamParser) {
+	public void run(final IStreamParser iStreamParser) throws Exception {
 		Process p = null;
 		try {
 			p = pb.start();
@@ -70,18 +70,22 @@ public class EasyProcess {
 			});
 			eThread.start();
 
+			int times = 0;
 			// 循环等待线程（进程结束）
 			while (oThread.isAlive() || eThread.isAlive()) {
 				long tpid = -1;
 				if ((tpid = getPid(p)) != -1L) {
+					System.out.println("tpid = "+tpid);
 					iStreamParser.isProcess(tpid);
 					Thread.sleep(100);
+				}
+				times++;
+				if(times > 20){
+					break;
 				}
 			}
 
 			iStreamParser.finish();
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 			if (p != null) {
 				p.destroy();

@@ -89,8 +89,9 @@ public class JavaProcessUtils {
 	 * 
 	 * @param pid java½ø³ÌµÄpid
 	 * @return
+	 * @throws Exception 
 	 */
-	public static List<String> listMoudles(Long pid) {
+	public static List<String> listMoudles(Long pid) throws Exception {
 		final List<String> mlist = new ArrayList<String>();
 		System.out.println("jmap "+pid+" ...");
 		new EasyProcess("jmap", String.valueOf(pid)).run(new EasyProcess.StreamParserAdpter() {
